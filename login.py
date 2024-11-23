@@ -69,11 +69,48 @@ def register_user(username, password, email):
     except Exception as e:
         return False, str(e)
 
+def verify_confirmation_code(username, confirmation_code):
+    """Verify the confirmation code sent to user's email."""
+    try:
+        secret_hash = generate_secret_hash(username)
+        cognito_client.confirm_sign_up(
+            ClientId=CLIENT_ID,
+            Username=username,
+            ConfirmationCode=confirmation_code,
+            SecretHash=secret_hash
+        )
+        return True, None
+    except cognito_client.exceptions.CodeMismatchException:
+        return False, "Invalid verification code"
+    except cognito_client.exceptions.ExpiredCodeException:
+        return False, "Verification code has expired"
+    except Exception as e:
+        return False, str(e)
+
+def resend_confirmation_code(username):
+    """Resend confirmation code to user's email."""
+    try:
+        secret_hash = generate_secret_hash(username)
+        cognito_client.resend_confirmation_code(
+            ClientId=CLIENT_ID,
+            Username=username,
+            SecretHash=secret_hash
+        )
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
 def login_page():
     """Render login and registration options."""
     st.title("🏥 MedTech Pro - Login")
     
-    tab1, tab2 = st.tabs(["Login", "Register"])
+    # Initialize session state variables if they don't exist
+    if 'registration_complete' not in st.session_state:
+        st.session_state.registration_complete = False
+    if 'pending_verification_username' not in st.session_state:
+        st.session_state.pending_verification_username = None
+    
+    tab1, tab2, tab3 = st.tabs(["Login", "Register", "Verify Account"])
     
     with tab1:
         with st.form("login_form"):
@@ -92,6 +129,8 @@ def login_page():
                         st.experimental_rerun()
                     elif result == 'UserNotConfirmed':
                         st.warning("Please verify your email before logging in.")
+                        st.session_state.pending_verification_username = username
+                        st.session_state.registration_complete = True
                     else:
                         st.error("Invalid credentials")
                 else:
@@ -113,7 +152,58 @@ def login_page():
                     success, error = register_user(username, password, email)
                     if success:
                         st.success("Registration successful! Please check your email for verification code.")
+                        st.session_state.registration_complete = True
+                        st.session_state.pending_verification_username = username
                     else:
                         st.error(f"Registration failed: {error}")
                 else:
                     st.error("Please fill in all fields.")
+
+    with tab3:
+        with st.form("verification_form"):
+            if st.session_state.registration_complete:
+                st.info("Please enter the verification code sent to your email.")
+                verification_username = st.text_input(
+                    "Username",
+                    value=st.session_state.pending_verification_username if st.session_state.pending_verification_username else "",
+                    disabled=bool(st.session_state.pending_verification_username)
+                )
+                verification_code = st.text_input("Verification Code")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    verify_submitted = st.form_submit_button("Verify Account")
+                with col2:
+                    resend_submitted = st.form_submit_button("Resend Code")
+
+                if verify_submitted and verification_code:
+                    success, error = verify_confirmation_code(verification_username, verification_code)
+                    if success:
+                        st.success("Account verified successfully! You can now login.")
+                        st.session_state.registration_complete = False
+                        st.session_state.pending_verification_username = None
+                    else:
+                        st.error(f"Verification failed: {error}")
+
+                if resend_submitted:
+                    success, error = resend_confirmation_code(verification_username)
+                    if success:
+                        st.success("Verification code resent! Please check your email.")
+                    else:
+                        st.error(f"Failed to resend code: {error}")
+            else:
+                st.info("Please register or login first.")
+
+# Initialize session state
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+# Main app logic
+if not st.session_state.authenticated:
+    login_page()
+else:
+    st.write(f"Welcome, {st.session_state.username}!")
+    if st.button("Logout"):
+        st.session_state.authenticated = False
+        st.session_state.username = None
+        st.experimental_rerun()
