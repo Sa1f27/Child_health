@@ -188,7 +188,7 @@ import numpy as np
 from streamlit_option_menu import option_menu
 import uuid
 import json
-import dashboard
+from dashboard import show_dashboard
 from ai_app import manage_child_profile
 import milestone
 import doctor_portal
@@ -483,7 +483,7 @@ class KidsCarePro:
     
     def _route_page(self, selected):
         pages = {
-            "Dashboard": lambda: dashboard.show_dashboard(st.session_state['username']),
+            "Dashboard": lambda: show_dashboard(st.session_state['username']),
             "Child Profile": manage_child_profile,
             "Health Tracker": health,
             "Analytics": analytics,
