@@ -583,5 +583,3 @@ def show_dashboard(username):
                         ):
                             st.success(f"Update will be shared on {scheduled_date} at {scheduled_time}")
 
-if __name__ == "__main__":
-    show_dashboard("username")
