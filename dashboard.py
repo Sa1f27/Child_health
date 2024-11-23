@@ -1,5 +1,5 @@
 import streamlit as st
-import pywhatkit
+#import pywhatkit
 import datetime
 import json
 import re
