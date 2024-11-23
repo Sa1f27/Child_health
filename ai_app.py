@@ -38,7 +38,7 @@ client = Groq(
 def get_ai_insights(profile_data):
     # Construct a prompt for medical insights based on profile data
     prompt = f"""
-    imagine you are a pediatrition,Based on the following child's medical profile, provide key medical insights and recommendations:
+    imagine you are a pediatrician, Based on the following child's medical profile, provide key medical insights and recommendations:
     - Name: {profile_data['Name']}
     - Age: {profile_data['DOB']}
     - Gender: {profile_data['Gender']}
@@ -49,7 +49,7 @@ def get_ai_insights(profile_data):
     - Chronic Conditions: {', '.join(profile_data['ChronicConditions'])}
     - Current Medications: {profile_data['CurrentMedications']}
 
-    Please provide a brief in points:
+    Please provide very brief in points:
     1. Key health observations
     2. Preventive care recommendations
     3. Dietary suggestions
@@ -68,6 +68,10 @@ def get_ai_insights(profile_data):
 def manage_child_profile():
     st.header("Child Profile Management")
     
+    # Initialize session state for AI insights if not already set
+    if "ai_insights" not in st.session_state:
+        st.session_state["ai_insights"] = None
+
     with st.form("child_profile_form"):
         col1, col2 = st.columns(2)
         
@@ -111,10 +115,10 @@ def manage_child_profile():
                 "Username": st.session_state.get('username', '')
             }
 
-            # Get AI insights
-            st.subheader("AI Medical Insights\n")
+            # Generate and store AI insights in session state
             with st.spinner("Generating medical insights..."):
                 insights = get_ai_insights(profile_data)
+                st.session_state["ai_insights"] = insights
                 st.markdown(insights)
             
             # Save to DynamoDB
@@ -124,6 +128,10 @@ def manage_child_profile():
                 
             except Exception as e:
                 st.error(f"Error saving profile: {str(e)}")
+        else:
+            # If no new insights are generated, display existing ones
+            if st.session_state["ai_insights"]:
+                st.markdown(st.session_state["ai_insights"])
 
     # Custom Query Section
     st.subheader("Ask Medical Questions")
@@ -146,7 +154,6 @@ def manage_child_profile():
                     st.error(f"Error getting response: {str(e)}")
         else:
             st.warning("Please enter a query first.")
-
 
 if __name__=="__main__":
     manage_child_profile()
