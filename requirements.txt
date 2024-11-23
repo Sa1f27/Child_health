@@ -12,3 +12,4 @@ Pillow
 numpy
 streamlit-option-menu
 pywhatkit
+groq
